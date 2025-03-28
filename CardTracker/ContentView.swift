@@ -10,57 +10,142 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @Query(sort: \Deck.order) private var decks: [Deck]
+    
     var body: some View {
-        NavigationSplitView {
+        NavigationView {
             List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+                if decks.isEmpty {
+                    ContentUnavailableView("No Decks",
+                                           systemImage: "rectangle.stack",
+                                           description: Text("Tap add to get started"))
+                } else {
+//                    List {
+                        ForEach(decks) { deck in
+                            VStack(alignment: .leading, spacing: 8) {
+                                
+                                TextField("New Deck", text: Binding(
+                                    get: { deck.name },
+                                    set: { newValue in
+                                        deck.name = newValue
+                                    }
+                                ))
+                                .font(.headline)
+                                .scrollDismissesKeyboard(.interactively)
+                                
+                                //                                TextField("Deck Name", text: $deck.name)
+                                //                                    .font(.headline)
+                                
+//                                HStack {
+
+//                                    Text("Wins: \(deck.winCount)")
+                                    Stepper("Wins: \(deck.winCount)", value: Binding(
+                                        get: { deck.winCount },
+                                        set: { newValue in
+                                            deck.winCount = newValue
+                                        }
+                                    ), in: 0...Int.max)
+//                                    .labelsHidden()
+//                                }
+                                
+//                                HStack {
+//                                    Text("Losses: \(deck.lossCount)")
+                                    Stepper("Losses: \(deck.lossCount)", value: Binding(
+                                        get: { deck.lossCount },
+                                        set: { newValue in
+                                            deck.lossCount = newValue
+                                        }
+                                    ), in: 0...Int.max)
+//                                    .labelsHidden()
+//                                }
+                                
+                                // Win-Loss Ratio Visualization
+                                GeometryReader { geometry in
+                                    HStack(spacing: 2) {
+                                        if deck.winCount == 0 && deck.lossCount == 0 {
+                                            Rectangle()
+                                                .fill(.gray.opacity(0.3))
+                                                .frame(width: geometry.size.width)
+                                        } else {
+                                            Rectangle()
+                                                .fill(.green)
+                                                .frame(width: geometry.size.width * deck.winLossRatio)
+                                            Rectangle()
+                                                .fill(.gray)
+                                                .frame(width: geometry.size.width * (1 - deck.winLossRatio))
+                                        }
+                                    }
+                                }
+                                .frame(height: 8)
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                
+                                Text("Notes")
+                                    .font(.caption)
+                                TextEditor(text: Binding(
+                                    get: { deck.note },
+                                    set: { newValue in
+                                        deck.note = newValue
+                                    }
+                                ))
+                                .scrollDismissesKeyboard(.interactively)
+                                .frame(height: 60)
+                                .font(.body)
+                                .scrollContentBackground(.hidden)
+                                .border(Color(.systemGray4))
+//                                .background(Color(.systemGray6))
+                                .background(.clear)
+                                .cornerRadius(0)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .onDelete(perform: deleteDecks)
+                        .onMove(perform: moveDecks)
+                }
+            }
+            .listStyle(.plain)
+            .navigationTitle("Decks")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: addDeck) {
+                        Label("Add Deck", systemImage: "plus")
                     }
                 }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
+                
+                ToolbarItem(placement: .navigationBarLeading) {
                     EditButton()
                 }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
             }
-        } detail: {
-            Text("Select an item")
         }
+        
     }
-
-    private func addItem() {
+    
+    private func addDeck() {
         withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
+            let newDeck = Deck(name: "New Deck", order: decks.count)
+            modelContext.insert(newDeck)
         }
     }
-
-    private func deleteItems(offsets: IndexSet) {
+    
+    private func deleteDecks(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(items[index])
+                modelContext.delete(decks[index])
             }
+        }
+    }
+    
+    private func moveDecks(from source: IndexSet, to destination: Int) {
+        var updatedDecks = decks
+        updatedDecks.move(fromOffsets: source, toOffset: destination)
+        
+        // Update order property for all decks
+        for (index, deck) in updatedDecks.enumerated() {
+            deck.order = index
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: Deck.self, inMemory: true)
 }
