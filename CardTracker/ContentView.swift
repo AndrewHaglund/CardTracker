@@ -12,6 +12,9 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Deck.order) private var decks: [Deck]
     
+    @FocusState private var notesIsFocused: Bool
+    @FocusState private var nameIsFocused: Bool
+    
     var body: some View {
         NavigationView {
             List {
@@ -31,33 +34,21 @@ struct ContentView: View {
                                     }
                                 ))
                                 .font(.headline)
-                                .scrollDismissesKeyboard(.interactively)
-                                
-                                //                                TextField("Deck Name", text: $deck.name)
-                                //                                    .font(.headline)
-                                
-//                                HStack {
+                                .focused($nameIsFocused)
 
-//                                    Text("Wins: \(deck.winCount)")
-                                    Stepper("Wins: \(deck.winCount)", value: Binding(
-                                        get: { deck.winCount },
-                                        set: { newValue in
-                                            deck.winCount = newValue
-                                        }
-                                    ), in: 0...Int.max)
-//                                    .labelsHidden()
-//                                }
-                                
-//                                HStack {
-//                                    Text("Losses: \(deck.lossCount)")
-                                    Stepper("Losses: \(deck.lossCount)", value: Binding(
-                                        get: { deck.lossCount },
-                                        set: { newValue in
-                                            deck.lossCount = newValue
-                                        }
-                                    ), in: 0...Int.max)
-//                                    .labelsHidden()
-//                                }
+                                Stepper("Wins: \(deck.winCount)", value: Binding(
+                                    get: { deck.winCount },
+                                    set: { newValue in
+                                        deck.winCount = newValue
+                                    }
+                                ), in: 0...Int.max)
+
+                                Stepper("Losses: \(deck.lossCount)", value: Binding(
+                                    get: { deck.lossCount },
+                                    set: { newValue in
+                                        deck.lossCount = newValue
+                                    }
+                                ), in: 0...Int.max)
                                 
                                 // Win-Loss Ratio Visualization
                                 GeometryReader { geometry in
@@ -87,12 +78,11 @@ struct ContentView: View {
                                         deck.note = newValue
                                     }
                                 ))
-                                .scrollDismissesKeyboard(.interactively)
+                                .focused($notesIsFocused)
                                 .frame(height: 60)
                                 .font(.body)
                                 .scrollContentBackground(.hidden)
                                 .border(Color(.systemGray4))
-//                                .background(Color(.systemGray6))
                                 .background(.clear)
                                 .cornerRadius(0)
                             }
@@ -103,6 +93,7 @@ struct ContentView: View {
                 }
             }
             .listStyle(.plain)
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Decks")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -113,6 +104,15 @@ struct ContentView: View {
                 
                 ToolbarItem(placement: .navigationBarLeading) {
                     EditButton()
+                }
+                
+                if notesIsFocused {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") {
+                            notesIsFocused = false
+                        }
+                    }
                 }
             }
         }
